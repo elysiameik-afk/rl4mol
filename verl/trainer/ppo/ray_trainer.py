@@ -26,7 +26,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from pprint import pprint
 from typing import Optional
-
+import time
 import numpy as np
 import ray
 import torch
@@ -101,7 +101,7 @@ class ResourcePoolManager:
 
     def _check_resource_available(self):
         """Check if the resource pool can be satisfied in this ray cluster."""
-        node_available_resources = ray._private.state.available_resources_per_node()
+        node_available_resources = ray.state.available_resources_per_node()
         node_available_gpus = {
             node: node_info.get("GPU", 0) if "GPU" in node_info else node_info.get("NPU", 0)
             for node, node_info in node_available_resources.items()
@@ -1233,6 +1233,7 @@ class RayPPOTrainer:
 
                 if is_last_step:
                     pprint(f"Final validation metrics: {last_val_metrics}")
+                    time.sleep(5)
                     progress_bar.close()
                     return
 

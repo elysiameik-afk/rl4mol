@@ -14,10 +14,11 @@
 """
 Note that we don't combine the main with ray_trainer as ray_trainer is used by other main.
 """
-
+import wandb
+import logging
 import os
 import socket
-
+import time
 import hydra
 import ray
 from omegaconf import OmegaConf
@@ -82,7 +83,24 @@ def run_ppo(config) -> None:
         runner = TaskRunner.options(runtime_env={"nsight": nsight_options}).remote()
     else:
         runner = TaskRunner.remote()
-    ray.get(runner.run.remote(config))
+    try:
+
+        logging.info("主进程：已启动远程训练任务，正在等待其完成...")
+        ray.get(runner.run.remote(config))
+        logging.info("主进程：检测到远程训练任务已完成。")
+    finally:
+        # 无论远程任务是成功还是失败，这部分都会在主进程退出前执行
+        logging.info("主进程：进入 finally 块，准备关闭W&B和Ray...")
+        
+        # 检查是否使用了wandb，如果使用了就调用finish
+        # 'wandb' in config.trainer.logger 是一个健壮的检查方式
+        if config.trainer.get("logger") and 'wandb' in config.trainer.logger:
+            time.sleep(5)
+            logging.info("主进程：正在调用 wandb.finish() 来确保所有数据已同步...")
+            wandb.finish()
+            logging.info("主_进程：wandb.finish() 已完成。")
+        else:
+            logging.info("主进程：未在配置中找到W&B logger，跳过 wandb.finish()。")
 
     # [Optional] get the path of the timeline trace file from the configuration, default to None
     # This file is used for performance analysis
@@ -193,21 +211,12 @@ class TaskRunner:
         from verl.trainer.ppo.ray_trainer import Role
 
         if config.reward_model.enable:
-            use_legacy_worker_impl = config.trainer.get("use_legacy_worker_impl", "auto")
-            if use_legacy_worker_impl in ["auto", "enable"]:
-                if config.reward_model.strategy in {"fsdp", "fsdp2"}:
-                    from verl.workers.fsdp_workers import RewardModelWorker
-                elif config.reward_model.strategy == "megatron":
-                    from verl.workers.megatron_workers import RewardModelWorker
-                else:
-                    raise NotImplementedError
-            elif use_legacy_worker_impl == "disable":
-                from verl.workers.roles import RewardModelWorker
-
-                print("Using new worker implementation")
+            if config.reward_model.strategy in {"fsdp", "fsdp2"}:
+                from verl.workers.fsdp_workers import RewardModelWorker
+            elif config.reward_model.strategy == "megatron":
+                from verl.workers.megatron_workers import RewardModelWorker
             else:
-                raise ValueError(f"Invalid use_legacy_worker_impl: {use_legacy_worker_impl}")
-
+                raise NotImplementedError
             self.role_worker_mapping[Role.RewardModel] = ray.remote(RewardModelWorker)
             if config.reward_model.enable_resource_pool:
                 self.mapping[Role.RewardModel] = "reward_pool"
