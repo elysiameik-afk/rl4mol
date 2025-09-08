@@ -43,6 +43,12 @@ actor_rollout_ref:
   # Timeout for operations executed against the process group
   nccl_timeout: 600
 
+  # Actor model config (inherits from dp_actor.yaml -> actor.yaml)
+  actor:
+    policy_loss:
+      # Power parameter for PLIC-p framework (default: 0.0 for original GSPO)
+      plic_p: 0.0
+
   # Rollout model config.
   rollout:
 

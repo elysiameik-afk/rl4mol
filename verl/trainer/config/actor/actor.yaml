@@ -62,6 +62,9 @@ policy_loss:
   # KL divergence penalty coefficient
   ppo_kl_coef: 0.1
 
+  # Power parameter for PLIC-p framework (p=0 corresponds to geometric mean/original GSPO)
+  plic_p: 0.0
+
 # Constant C in Dual-clip PPO; clips when advantage < 0 and ratio > C
 clip_ratio_c: 3.0
 

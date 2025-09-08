@@ -11,6 +11,19 @@ export VLLM_ATTENTION_BACKEND=FLASH_ATTN
 export HYDRA_FULL_ERROR=1
 
 # ===================================================================
+# PLIC-p Framework Configuration
+# ===================================================================
+# This script uses the PLIC-p framework with configurable power parameter p:
+# - p=0.0: Original GSPO with geometric mean (default)
+# - p=1.0: Arithmetic mean
+# - p=2.0: Quadratic mean (RMS)
+# - p=-1.0: Harmonic mean
+#
+# To change the power parameter, modify the plic_p value below:
+# actor_rollout_ref.actor.policy_loss.plic_p=1.0
+# ===================================================================
+
+# ===================================================================
 # FIX: 定义一个Shell变量来存储响应长度，避免'bad substitution'错误
 # ===================================================================
 MAX_RESPONSE_LENGTH=2048
@@ -18,7 +31,8 @@ MAX_RESPONSE_LENGTH=2048
 # FIX: 重新使用反斜杠 `\` 来分割长命令，确保脚本可读性和正确性
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
-    actor_rollout_ref.actor.policy_loss.loss_mode=gspo \
+    actor_rollout_ref.actor.policy_loss.loss_mode=plic_p \
+    actor_rollout_ref.actor.policy_loss.plic_p=0.0 \
     actor_rollout_ref.actor.clip_ratio_low=0.0003 \
     actor_rollout_ref.actor.clip_ratio_high=0.0004 \
     actor_rollout_ref.actor.use_kl_loss=False \
