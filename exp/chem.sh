@@ -29,14 +29,14 @@ export HYDRA_FULL_ERROR=1
 # ===================================================================
 
 # Data paths (modify to your actual data directory)
-TRAIN_DATA="/root/autodl-tmp/myverl/data/chem/train.parquet"
-VAL_DATA="/root/autodl-tmp/myverl/data/chem/val.parquet"
+TRAIN_DATA="/root/autodl-tmp/verl97/verl/data/chem_rl/train.parquet"
+VAL_DATA="/root/autodl-tmp/verl97/verl/data/chem_rl/val.parquet"
 
 # Model path (modify to your chemistry SFT model path)
-MODEL_PATH="/root/autodl-tmp/myverl/models/chem-sft-model"
+MODEL_PATH="/root/autodl-tmp/rlmodels"
 
 # Checkpoint directory (modify to your desired checkpoint location)
-CKPT_DIR="/root/autodl-tmp/verldev/Verl_RL/ckpts/chem/gspo_1"
+CKPT_DIR="/root/autodl-tmp/verl97/verl/ckpts/chem/gspo_1"
 
 # Project name for logging (modify as needed)
 PROJECT_NAME="Chemistry-EGFR-RL"
@@ -58,19 +58,37 @@ MAX_RESPONSE_LENGTH=512
 # actor_rollout_ref.actor.policy_loss.plic_p=1.0
 # ===================================================================
 
+# ===================================================================
+# KL Divergence Configuration (IMPORTANT for diversity)
+# ===================================================================
+# KL divergence constraint prevents the model from deviating too much
+# from the SFT model, which helps maintain output diversity and prevents
+# mode collapse (repeatedly generating the same high-scoring molecule).
+#
+# - use_kl_loss=True: Enable KL divergence constraint
+# - kl_loss_coef: Strength of the constraint
+#   - 0.05-0.1: Light constraint (recommended starting point)
+#   - 0.1-0.2: Medium constraint (good balance)
+#   - 0.2-0.5: Strong constraint (if severe mode collapse)
+#
+# Current setting: 0.1 (recommended default)
+# If still seeing repetitive outputs, increase to 0.15 or 0.2
+# If reward improvement is too slow, decrease to 0.05
+# ===================================================================
+
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=grpo \
     actor_rollout_ref.actor.policy_loss.loss_mode=plic_p \
     actor_rollout_ref.actor.policy_loss.plic_p=0.0 \
     actor_rollout_ref.actor.clip_ratio_low=0.0003 \
     actor_rollout_ref.actor.clip_ratio_high=0.0004 \
-    actor_rollout_ref.actor.use_kl_loss=False \
-    actor_rollout_ref.actor.kl_loss_coef=0.0 \
+    actor_rollout_ref.actor.use_kl_loss=True \
+    actor_rollout_ref.actor.kl_loss_coef=0.1 \
     data.train_files=${TRAIN_DATA} \
     data.val_files=${VAL_DATA} \
     data.train_batch_size=16 \
     data.val_batch_size=8 \
-    data.max_prompt_length=2048 \
+    data.max_prompt_length=1024 \
     data.max_response_length=${MAX_RESPONSE_LENGTH} \
     data.shuffle=true \
     data.prompt_key=prompt \
@@ -111,7 +129,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.experiment_name=${EXPERIMENT_NAME} \
     trainer.default_local_dir=${CKPT_DIR} \
     trainer.critic_warmup=0 \
-    trainer.save_freq=8 \
+    trainer.save_freq=16 \
     trainer.test_freq=1 \
     trainer.total_epochs=4 \
     trainer.n_gpus_per_node=1 \
